@@ -1,0 +1,13 @@
+# 依赖和构建结果
+node_modules/
+dist/
+build/
+
+# 本地环境配置，可能含密码或 API Key
+.env.local
+.env.*.local
+
+# 日志和系统文件
+*.log
+.DS_Store
+Thumbs.db

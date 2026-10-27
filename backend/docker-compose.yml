@@ -1,0 +1,14 @@
+# 仅用于一键启动本地 Redis（应用本身用 mvn 启动，见 README）。
+# 需要本机已安装 Docker。没有 Docker 也可以用本机 Redis 或云 Redis。
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redisson-login-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

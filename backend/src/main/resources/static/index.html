@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redisson 登录演示</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+               background: #f5f7fa; margin: 0; padding: 40px; color: #303133; }
+        .card { background: #fff; max-width: 520px; margin: 0 auto; padding: 28px 32px;
+                border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+        h2 { margin-top: 0; }
+        .row { display: flex; gap: 10px; margin: 12px 0; align-items: center; }
+        input { flex: 1; padding: 9px 12px; border: 1px solid #dcdfe6; border-radius: 6px; }
+        button { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer;
+                 background: #409eff; color: #fff; font-size: 14px; }
+        button:disabled { background: #c0c4cc; cursor: not-allowed; }
+        .ghost { background: #fff; color: #409eff; border: 1px solid #409eff; }
+        pre { background: #1e1e1e; color: #9cdcfe; padding: 14px; border-radius: 6px;
+              overflow:auto; font-size: 13px; min-height: 60px; }
+        .hint { font-size: 12px; color: #909399; margin: 6px 0 14px; }
+        .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px;
+                 background:#ecf5ff; color:#409eff; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>🔐 Redisson 登录演示</h2>
+    <p class="hint">token 保存在 Redis（Redisson）。登录后即使<b>重启本服务</b>，只要 Redis 里的 token 没过期，你依然是登录态。</p>
+
+    <div class="row">
+        <input id="username" placeholder="用户名，如 admin" value="admin" />
+    </div>
+    <div class="row">
+        <input id="password" type="password" placeholder="密码，默认 123456" value="123456" />
+    </div>
+    <div class="row">
+        <button id="loginBtn">登录</button>
+        <button id="logoutBtn" class="ghost" disabled>退出登录</button>
+    </div>
+    <p class="hint">演示账号：admin / manager / viewer，密码均 <code>123456</code></p>
+
+    <div class="row">
+        <button id="meBtn" disabled>获取当前用户 (/api/me)</button>
+        <button id="helloBtn" disabled>调用受保护接口 (/api/hello)</button>
+    </div>
+
+    <div>状态：<span id="state" class="badge">未登录</span></div>
+    <pre id="out">// 操作结果会显示在这里</pre>
+</div>
+
+<script>
+    const tokenHolder = { token: '' };
+    const out = document.getElementById('out');
+    const state = document.getElementById('state');
+
+    function log(obj) {
+        out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    }
+    function setLogin(on) {
+        state.textContent = on ? ('已登录：' + tokenHolder.token.slice(0, 12) + '…') : '未登录';
+        document.getElementById('logoutBtn').disabled = !on;
+        document.getElementById('meBtn').disabled = !on;
+        document.getElementById('helloBtn').disabled = !on;
+    }
+    async function api(path, opts = {}) {
+        const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+        if (tokenHolder.token) headers['Authorization'] = 'Bearer ' + tokenHolder.token;
+        const res = await fetch(path, { ...opts, headers });
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
+        return { status: res.status, data };
+    }
+
+    document.getElementById('loginBtn').onclick = async () => {
+        const r = await api('/api/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            })
+        });
+        if (r.data && r.data.code === 200) {
+            tokenHolder.token = r.data.token;
+            setLogin(true);
+            log(r.data);
+        } else {
+            log(r.data || ('HTTP ' + r.status));
+        }
+    };
+
+    document.getElementById('logoutBtn').onclick = async () => {
+        const r = await api('/api/logout', { method: 'POST' });
+        tokenHolder.token = '';
+        setLogin(false);
+        log(r.data || ('HTTP ' + r.status));
+    };
+
+    document.getElementById('meBtn').onclick = async () => {
+        const r = await api('/api/me');
+        log(r.data || ('HTTP ' + r.status));
+    };
+
+    document.getElementById('helloBtn').onclick = async () => {
+        const r = await api('/api/hello');
+        log(r.data || ('HTTP ' + r.status));
+    };
+
+    // 页面加载时探测是否后端已启动
+    api('/api/health').then(r => log({ hint: '后端状态', status: r.status }))
+                       .catch(() => log('⚠️ 后端未启动或 Redis 未连接，请先按 README 启动服务。'));
+</script>
+</body>
+</html>

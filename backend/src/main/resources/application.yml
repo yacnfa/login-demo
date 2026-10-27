@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: redisson-login-demo
+  data:
+    redis:
+      host: localhost      # Redis 主机
+      port: 6379           # Redis 端口
+      # password: 你的Redis密码   # 如果 Redis 设置了密码，取消注释并填写
+
+auth:
+  token:
+    ttl-seconds: 1800      # token 有效期（秒），默认 30 分钟，校验时会滑动续期
